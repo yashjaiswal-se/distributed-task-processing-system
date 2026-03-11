@@ -20,6 +20,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -85,5 +87,20 @@ public class AuthServiceImpl implements AuthService {
                 principal.getUserId().toString(),
                 principal.getTenantId().toString()
         );
+    }
+
+    @Override
+    public String refresh(String refreshToken) {
+
+        if (!jwtService.isTokenValid(refreshToken)) {
+            throw new BusinessException("Invalid or expired refresh token");
+        }
+
+        String userId = jwtService.extractUserId(refreshToken);
+
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new BusinessException("User not found"));
+
+        return jwtService.generateAccessToken(user);
     }
 }

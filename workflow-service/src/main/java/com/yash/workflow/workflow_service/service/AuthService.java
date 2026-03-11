@@ -7,5 +7,5 @@ import com.yash.workflow.workflow_service.dto.AuthResponse;
 public interface AuthService {
     AuthResponse register(RegisterRequest request);
     AuthResponse login(LoginRequest request);
-
+    String refresh(String refreshToken);
 }

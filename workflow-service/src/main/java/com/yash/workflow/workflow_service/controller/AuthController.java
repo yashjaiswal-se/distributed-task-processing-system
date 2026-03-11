@@ -1,8 +1,6 @@
 package com.yash.workflow.workflow_service.controller;
 
-import com.yash.workflow.workflow_service.dto.AuthResponse;
-import com.yash.workflow.workflow_service.dto.LoginRequest;
-import com.yash.workflow.workflow_service.dto.RegisterRequest;
+import com.yash.workflow.workflow_service.dto.*;
 import com.yash.workflow.workflow_service.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,5 +26,16 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request) {
 
         return ResponseEntity.ok(authService.login(request));
+    }
+    @PostMapping("/refresh")
+    public ResponseEntity<RefreshResponse> refresh(
+            @RequestBody RefreshRequest request) {
+
+        String newAccessToken =
+                authService.refresh(request.refreshToken());
+
+        return ResponseEntity.ok(
+                new RefreshResponse(newAccessToken)
+        );
     }
 }
