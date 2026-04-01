@@ -41,4 +41,7 @@ public class Task {
 
     @UpdateTimestamp
     private Instant updatedAt;
+
+    @Column(unique = true, nullable = false)
+    private String idempotencyKey;
 }

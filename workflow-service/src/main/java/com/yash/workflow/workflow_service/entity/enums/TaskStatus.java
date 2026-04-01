@@ -1,10 +1,9 @@
 package com.yash.workflow.workflow_service.entity.enums;
 
 public enum TaskStatus {
-
-    PENDING,
-    RUNNING,
+    CREATED,
+    DISPATCHED,
+    IN_PROGRESS,
     COMPLETED,
     FAILED
-
 }
