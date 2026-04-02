@@ -83,6 +83,7 @@ public class WorkflowService {
         for (TaskRequest taskRequest : request.getTasks()) {
 
             Task task = new Task();
+            task.setId(UUID.randomUUID());
             task.setWorkflowId(workflowId);
             task.setTaskName(taskRequest.getTaskName());
             task.setPayload(taskRequest.getPayload());
