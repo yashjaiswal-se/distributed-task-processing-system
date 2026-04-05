@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import com.yash.workflow.workflow_service.entity.enums.WorkflowStatus;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -24,8 +25,18 @@ public class Workflow {
     @Column(nullable = false)
     private String workflowName;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status;
+    private WorkflowStatus status;
+
+    @Column(nullable = false)
+    private int totalTasks;
+
+    @Column(nullable = false)
+    private int completedTasks;
+
+    @Column(nullable = false)
+    private int failedTasks;
 
     @CreationTimestamp
     private Instant createdAt;

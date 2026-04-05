@@ -20,7 +20,7 @@ public class TaskConsumer {
     private final TaskRepository taskRepository;
     private final TaskExecutionService executionService;
 
-    @KafkaListener(topics = "task-topic")
+    @KafkaListener(topics = "task-execution-topic")
     public void consume(TaskEvent event) {
 
         log.info("Received TaskEvent: {}", event);

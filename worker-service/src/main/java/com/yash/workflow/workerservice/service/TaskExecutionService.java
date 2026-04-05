@@ -3,8 +3,11 @@ package com.yash.workflow.workerservice.service;
 import com.yash.workflow.workerservice.entity.Task;
 import com.yash.workflow.workerservice.entity.TaskStatus;
 import com.yash.workflow.workerservice.repository.TaskRepository;
+import com.yash.workflow.workerservice.dto.TaskCompletedEvent;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -14,6 +17,7 @@ public class TaskExecutionService {
 
     private final TaskRepository taskRepository;
     private final TaskRetryPublisher retryPublisher;
+    private final TaskCompletedPublisher completedPublisher;
 
     public void execute(Task task) {
 
@@ -38,24 +42,45 @@ public class TaskExecutionService {
                     throw new RuntimeException("Unknown task: " + task.getTaskName());
             }
 
-            // Success
             task.setStatus(TaskStatus.COMPLETED);
             taskRepository.save(task);
 
             log.info("Task completed: {}", task.getId());
 
+            completedPublisher.publish(
+                    new TaskCompletedEvent(
+                            task.getId(),
+                            task.getWorkflowId(),
+                            "COMPLETED"
+                    )
+            );
+
         } catch (Exception e) {
 
             log.error("Task failed: {}", e.getMessage());
 
-            // Retry logic (state only for now)
             task.setRetryCount(task.getRetryCount() + 1);
 
             if (task.getRetryCount() >= task.getMaxRetries()) {
+
                 task.setStatus(TaskStatus.FAILED);
+                taskRepository.save(task);
+
                 log.error("Max retries reached. Task FAILED: {}", task.getId());
+
+                completedPublisher.publish(
+                        new TaskCompletedEvent(
+                                task.getId(),
+                                task.getWorkflowId(),
+                                "FAILED"
+                        )
+                );
+
             } else {
+
+                // ✅ RETRY PATH (NO EVENT)
                 task.setStatus(TaskStatus.CREATED);
+
                 log.warn("Retrying task. Attempt: {}", task.getRetryCount());
 
                 taskRepository.save(task);
@@ -63,8 +88,6 @@ public class TaskExecutionService {
                 retryPublisher.retry(task);
                 return;
             }
-
-            taskRepository.save(task);
         }
     }
 

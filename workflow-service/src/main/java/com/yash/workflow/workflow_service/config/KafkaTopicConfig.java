@@ -18,4 +18,13 @@ public class KafkaTopicConfig {
                 .replicas(1)
                 .build();
     }
+    @Bean
+    public NewTopic taskCompletedTopic() {
+
+        return TopicBuilder
+                .name("task-completed-topic")
+                .partitions(3)
+                .replicas(1)
+                .build();
+}
 }

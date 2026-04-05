@@ -6,6 +6,7 @@ import com.yash.workflow.workflow_service.dto.events.TaskEvent;
 import com.yash.workflow.workflow_service.entity.Task;
 import com.yash.workflow.workflow_service.entity.Workflow;
 import com.yash.workflow.workflow_service.entity.enums.TaskStatus;
+import com.yash.workflow.workflow_service.entity.enums.WorkflowStatus;
 import com.yash.workflow.workflow_service.repository.TaskRepository;
 import com.yash.workflow.workflow_service.repository.WorkflowRepository;
 import com.yash.workflow.workflow_service.service.messaging.TaskPublisher;
@@ -33,14 +34,13 @@ public class WorkflowService {
      * Entry point:
      * 1. Persist workflow + tasks (transactional)
      * 2. Publish events (outside transaction)
-     * 3. Update state → DISPATCHED
      */
     public UUID startWorkflow(StartWorkflowRequest request) {
 
-        // Step 1: DB operations (transactional)
+        // Step 1: DB operations
         List<Task> savedTasks = createAndPersistWorkflow(request);
 
-        // Step 2: Kafka publish (outside transaction)
+        // Step 2: Kafka publish
         dispatchTasks(savedTasks);
 
         return savedTasks.get(0).getWorkflowId();
@@ -64,10 +64,19 @@ public class WorkflowService {
     private Workflow createWorkflow(StartWorkflowRequest request) {
 
         Workflow workflow = new Workflow();
-        workflow.setWorkflowName(request.getWorkflowName());
-        workflow.setStatus("CREATED");
 
-        // Temporary tenant strategy
+        workflow.setWorkflowName(request.getWorkflowName());
+
+        
+        workflow.setStatus(WorkflowStatus.CREATED);
+
+        
+        int totalTasks = request.getTasks().size();
+        workflow.setTotalTasks(totalTasks);
+        workflow.setCompletedTasks(0);
+        workflow.setFailedTasks(0);
+
+        
         workflow.setTenantId(UUID.randomUUID());
 
         return workflowRepository.save(workflow);
@@ -83,6 +92,7 @@ public class WorkflowService {
         for (TaskRequest taskRequest : request.getTasks()) {
 
             Task task = new Task();
+
             task.setId(UUID.randomUUID());
             task.setWorkflowId(workflowId);
             task.setTaskName(taskRequest.getTaskName());
