@@ -32,7 +32,11 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
 }
-tasks.named('test') {
+test {
     useJUnitPlatform()
-    failOnNoDiscoveredTests = false
+
+    testLogging {
+        events "passed", "failed", "skipped"
+        showStandardStreams = true
+    }
 }

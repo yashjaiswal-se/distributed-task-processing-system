@@ -19,7 +19,7 @@ public class TaskRetryPublisher {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    private static final String TOPIC = "task-topic";
+    private static final String TOPIC = "task-execution-topic";
 
     public void retry(Task task) {
 

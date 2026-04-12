@@ -39,8 +39,9 @@ public class TaskPublisher {
                         event.getIdempotencyKey(),
                         ex);
             } else {
-                log.info("Kafka publish SUCCESS: taskId={}, partition={}, offset={}, retryCount={}",
-                        event.getTaskId(),
+               log.info("event=TASK_DISPATCHED workflowId={} taskId={} partition={} offset={} retry={}",
+                         event.getWorkflowId(),
+                         event.getTaskId(),
                         result.getRecordMetadata().partition(),
                         result.getRecordMetadata().offset(),
                         event.getRetryCount());

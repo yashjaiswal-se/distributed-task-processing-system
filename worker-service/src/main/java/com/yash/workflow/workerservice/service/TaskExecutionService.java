@@ -26,7 +26,11 @@ public class TaskExecutionService {
             task.setStatus(TaskStatus.IN_PROGRESS);
             taskRepository.save(task);
 
-            log.info("Executing Task: {}", task.getTaskName());
+            log.info("event=TASK_EXECUTION_STARTED workflowId={} taskId={} taskName={} retry={}",
+                    task.getWorkflowId(),
+                    task.getId(),
+                    task.getTaskName(),
+                    task.getRetryCount());
 
             switch (task.getTaskName()) {
 
@@ -38,14 +42,20 @@ public class TaskExecutionService {
                     processPayment(task);
                     break;
 
+                case "FAIL_TEST":
+                    throw new RuntimeException("Intentional failure for testing");
+
                 default:
                     throw new RuntimeException("Unknown task: " + task.getTaskName());
             }
 
+            // Success path
             task.setStatus(TaskStatus.COMPLETED);
             taskRepository.save(task);
 
-            log.info("Task completed: {}", task.getId());
+            log.info("event=TASK_COMPLETED workflowId={} taskId={}",
+                    task.getWorkflowId(),
+                    task.getId());
 
             completedPublisher.publish(
                     new TaskCompletedEvent(
@@ -57,7 +67,11 @@ public class TaskExecutionService {
 
         } catch (Exception e) {
 
-            log.error("Task failed: {}", e.getMessage());
+            log.error("event=TASK_EXECUTION_ERROR workflowId={} taskId={} retry={} error={}",
+                    task.getWorkflowId(),
+                    task.getId(),
+                    task.getRetryCount(),
+                    e.getMessage());
 
             task.setRetryCount(task.getRetryCount() + 1);
 
@@ -66,7 +80,10 @@ public class TaskExecutionService {
                 task.setStatus(TaskStatus.FAILED);
                 taskRepository.save(task);
 
-                log.error("Max retries reached. Task FAILED: {}", task.getId());
+                log.error("event=TASK_FINAL_FAILURE workflowId={} taskId={} totalAttempts={}",
+                        task.getWorkflowId(),
+                        task.getId(),
+                        task.getRetryCount());
 
                 completedPublisher.publish(
                         new TaskCompletedEvent(
@@ -78,10 +95,14 @@ public class TaskExecutionService {
 
             } else {
 
-                // ✅ RETRY PATH (NO EVENT)
+                // Retry path
                 task.setStatus(TaskStatus.CREATED);
 
-                log.warn("Retrying task. Attempt: {}", task.getRetryCount());
+                log.warn("event=TASK_RETRY workflowId={} taskId={} attempt={} maxRetries={}",
+                        task.getWorkflowId(),
+                        task.getId(),
+                        task.getRetryCount(),
+                        task.getMaxRetries());
 
                 taskRepository.save(task);
 
@@ -92,10 +113,16 @@ public class TaskExecutionService {
     }
 
     private void sendEmail(Task task) {
-        log.info("Sending email with payload: {}", task.getPayload());
+        log.info("event=EMAIL_TASK workflowId={} taskId={} payload={}",
+                task.getWorkflowId(),
+                task.getId(),
+                task.getPayload());
     }
 
     private void processPayment(Task task) {
-        log.info("Processing payment with payload: {}", task.getPayload());
+        log.info("event=PAYMENT_TASK workflowId={} taskId={} payload={}",
+                task.getWorkflowId(),
+                task.getId(),
+                task.getPayload());
     }
 }

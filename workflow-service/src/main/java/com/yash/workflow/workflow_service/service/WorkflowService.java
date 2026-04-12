@@ -152,4 +152,12 @@ public class WorkflowService {
                 task.getMaxRetries()
         );
     }
+    public Workflow getWorkflow(UUID id) {
+        return workflowRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Workflow not found"));
+}
+
+    public String getStatus(UUID id) {
+        return getWorkflow(id).getStatus().name();
+    }
 }

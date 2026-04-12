@@ -11,8 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-import java.util.Optional;
-
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -26,26 +24,58 @@ public class TaskCompletedConsumer {
     )
     public void consume(TaskCompletedEvent event) {
 
-        log.info("Received TaskCompletedEvent: {}", event);
+        final String workflowId = event.getWorkflowId().toString();
+        final String taskId = event.getTaskId().toString();
+        final String status = event.getStatus();
 
-        Optional<Workflow> workflowOpt =
-                workflowRepository.findById(event.getWorkflowId());
+        // Event received
+        log.info("event=TASK_COMPLETION_RECEIVED workflowId={} taskId={} status={}",
+                workflowId, taskId, status);
 
-        if (workflowOpt.isEmpty()) {
-            log.error("Workflow NOT FOUND: {}", event.getWorkflowId());
+        Workflow workflow = workflowRepository.findById(event.getWorkflowId())
+                .orElse(null);
+
+        if (workflow == null) {
+            log.error("event=WORKFLOW_NOT_FOUND workflowId={}", workflowId);
             return;
         }
 
-        Workflow workflow = workflowOpt.get();
-
-        // 🔹 Update counters
-        if ("COMPLETED".equalsIgnoreCase(event.getStatus())) {
-            workflow.setCompletedTasks(workflow.getCompletedTasks() + 1);
-        } else if ("FAILED".equalsIgnoreCase(event.getStatus())) {
-            workflow.setFailedTasks(workflow.getFailedTasks() + 1);
+        // Duplicate protection (post-completion guard)
+        if (isWorkflowAlreadyFinal(workflow)) {
+            log.warn("event=DUPLICATE_EVENT_SKIPPED workflowId={} taskId={}",
+                    workflowId, taskId);
+            return;
         }
 
-        // 🔹 Decide workflow status
+        // Update counters
+        updateCounters(workflow, status);
+
+        // Update workflow status
+        updateWorkflowStatus(workflow);
+
+        workflowRepository.save(workflow);
+
+        // Final state log
+        log.info("event=WORKFLOW_UPDATED workflowId={} status={} completed={} failed={}",
+                workflow.getId(),
+                workflow.getStatus(),
+                workflow.getCompletedTasks(),
+                workflow.getFailedTasks());
+    }
+
+    private boolean isWorkflowAlreadyFinal(Workflow workflow) {
+        return workflow.getCompletedTasks() + workflow.getFailedTasks() >= workflow.getTotalTasks();
+    }
+
+    private void updateCounters(Workflow workflow, String status) {
+        if ("COMPLETED".equalsIgnoreCase(status)) {
+            workflow.setCompletedTasks(workflow.getCompletedTasks() + 1);
+        } else if ("FAILED".equalsIgnoreCase(status)) {
+            workflow.setFailedTasks(workflow.getFailedTasks() + 1);
+        }
+    }
+
+    private void updateWorkflowStatus(Workflow workflow) {
         if (workflow.getFailedTasks() > 0) {
             workflow.setStatus(WorkflowStatus.FAILED);
         } else if (workflow.getCompletedTasks() == workflow.getTotalTasks()) {
@@ -53,13 +83,5 @@ public class TaskCompletedConsumer {
         } else {
             workflow.setStatus(WorkflowStatus.IN_PROGRESS);
         }
-
-        workflowRepository.save(workflow);
-
-        log.info("Workflow updated: workflowId={}, status={}, completed={}, failed={}",
-                workflow.getId(),
-                workflow.getStatus(),
-                workflow.getCompletedTasks(),
-                workflow.getFailedTasks());
     }
 }
